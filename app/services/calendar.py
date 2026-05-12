@@ -2,6 +2,8 @@ from datetime import datetime, timedelta, timezone, time
 
 import httpx
 
+from app.config import settings
+
 TIMEOUT = httpx.Timeout(connect=10.0, read=30.0, write=10.0, pool=5.0)
 SLOT_DURATION = timedelta(hours=1)
 WORK_START = time(9, 0)
@@ -12,6 +14,31 @@ PKT = timezone(timedelta(hours=5))
 
 class CalendarTokenExpiredError(Exception):
     pass
+
+
+class CalendarTokenRefreshError(Exception):
+    pass
+
+
+async def refresh_google_token(refresh_token: str) -> dict:
+    """Exchange a refresh token for a new access token. Raises CalendarTokenRefreshError on failure."""
+    async with httpx.AsyncClient(timeout=TIMEOUT, verify=True) as client:
+        resp = await client.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "grant_type": "refresh_token",
+                "refresh_token": refresh_token,
+                "client_id": settings.google_client_id,
+                "client_secret": settings.google_client_secret,
+            },
+        )
+    if not resp.is_success:
+        raise CalendarTokenRefreshError(f"Token refresh failed: {resp.status_code}")
+    body = resp.json()
+    expires_at = None
+    if "expires_in" in body:
+        expires_at = (datetime.now(timezone.utc) + timedelta(seconds=body["expires_in"])).isoformat()
+    return {"access_token": body["access_token"], "expires_at": expires_at}
 
 
 def _working_days_ahead(days_ahead: int) -> list[datetime]:
