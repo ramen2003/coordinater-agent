@@ -7,6 +7,7 @@ SLOT_DURATION = timedelta(hours=1)
 WORK_START = time(9, 0)
 WORK_END = time(18, 0)
 MAX_SLOTS = 5
+PKT = timezone(timedelta(hours=5))
 
 
 class CalendarTokenExpiredError(Exception):
@@ -87,7 +88,8 @@ async def get_free_slots(
         for slot in day_slots:
             if len(free) >= MAX_SLOTS:
                 break
-            label = slot.strftime("%A %-d %B, %I:%M %p UTC")
+            slot_pkt = slot.astimezone(PKT)
+            label = slot_pkt.strftime("%A %-d %B, %I:%M %p PKT")
             free.append({"slot_iso": slot.isoformat(), "slot_label": label})
 
     return free

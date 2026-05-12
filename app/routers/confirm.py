@@ -1,8 +1,16 @@
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Query
 from fastapi.responses import HTMLResponse
 
 from app.services import backend, booking, email, token_store
 from app.services.token_store import TokenAlreadyUsedError, TokenNotFoundError
+
+PKT = timezone(timedelta(hours=5))
+
+
+def _format_slot(slot_iso: str) -> str:
+    dt = datetime.fromisoformat(slot_iso.replace("Z", "+00:00")).astimezone(PKT)
+    return dt.strftime("%A %-d %B %Y, %I:%M %p PKT")
 
 router = APIRouter()
 
@@ -36,7 +44,7 @@ async def confirm(token: str = Query(...)):
     slot_iso = data["slot_iso"]
     application_id = data["application_id"]
 
-    interviewer_email = f"user_{payload_data['interviewer_user_id']}@hrmony.internal"
+    interviewer_email = payload_data["interviewer_email"]
 
     try:
         await booking.create_calendar_event(
@@ -56,7 +64,7 @@ async def confirm(token: str = Query(...)):
             candidate_name=payload_data["candidate_name"],
             interviewer_email=interviewer_email,
             job_title=payload_data["job_title"],
-            slot_iso=slot_iso,
+            slot_iso=_format_slot(slot_iso),
         )
     except Exception:
         pass
