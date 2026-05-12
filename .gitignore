@@ -117,3 +117,5 @@ docs/build/
 
 # Coding Practices (internal documentation)
 CODING_PRACTICES.md
+
+.venv
